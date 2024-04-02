@@ -26,6 +26,9 @@ selected_option = 0
 # Configurações do menu config
 config_options = ["AJUSTAR VOLUME", "ALTERAR RESOLUÇÃO", "VOLTAR"]
 
+# Configurações novo jogo
+slot_options = ["Slot 1: Vazio", "Slot 2: Vazio", "Slot 3: Vazio"]
+selected_slot = 0
 
 # Config de volume da música
 music_volume = 0.1
@@ -70,6 +73,57 @@ def draw_menu():
         # Centraliza o texto na tela
         text_rect = text.get_rect(center=(WIDTH / 2, menu_top + i * spacing))
         screen.blit(text, text_rect)
+
+
+def draw_slot_selection():
+    # Reutiliza o fundo do menu para simplicidade
+    screen.blit(config_background, (0, 0))
+    font = pygame.font.Font('resources/fonts/barcadenobar.ttf', 35)
+
+    space_percentage = 0.01  # Define o espaço entre os slots como 1% da largura da tela
+    # Calcula o espaço entre os slots baseado na largura da tela
+    space_between_slots = WIDTH * space_percentage
+
+    # Calcula a largura total necessária, considerando o espaço dinâmico entre os slots
+    total_width = sum(font.size(slot)[
+                      0] for slot in slot_options) + (len(slot_options) - 1) * space_between_slots
+    # Calcula a posição inicial x para que os slots fiquem centralizados
+    start_x = (WIDTH - total_width) / 2
+
+    y = 300  # Posição y para todos os slots
+    for i, slot in enumerate(slot_options):
+        text = font.render(slot, True, WHITE if i ==
+                           selected_slot else (80, 80, 80))
+        text_rect = text.get_rect()
+        # Atualiza a posição do slot baseando-se na posição inicial e no índice
+        text_rect.topleft = (start_x, y)
+        screen.blit(text, text_rect)
+
+        start_x += text_rect.width + space_between_slots
+
+
+def handle_slot_selection():
+    global selected_slot
+    while True:
+        draw_slot_selection()
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == KEYDOWN:
+                if event.key == K_ESCAPE:
+                    return  # Retorna ao menu principal
+                elif event.key == K_RIGHT or event.key == K_d:
+                    selected_slot = (selected_slot + 1) % len(slot_options)
+                elif event.key == K_LEFT or event.key == K_a:
+                    selected_slot = (selected_slot - 1) % len(slot_options)
+                elif event.key == K_RETURN:
+                    # Aqui vai a lógica de save
+                    print(
+                        f"Novo jogo iniciado no {slot_options[selected_slot]}")
+                    return
 
 # Função para desenhar o menu de configuração
 
@@ -281,7 +335,9 @@ def handle_events():
             elif event.key == K_UP or event.key == K_w:
                 selected_option = (selected_option - 1) % len(menu_options)
             elif event.key == K_RETURN:
-                if selected_option == len(menu_options) - 1:
+                if selected_option == 0:  # Novo Jogo
+                    handle_slot_selection()
+                elif selected_option == len(menu_options) - 1:
                     pygame.quit()
                     exit()
                 elif selected_option == 2:  # Seleciona configurações
