@@ -1,5 +1,6 @@
 import pygame
 import os
+import random
 from pygame.locals import *
 from sys import exit
 
@@ -15,6 +16,7 @@ HEIGHT = 720
 
 # Cores
 WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 
 # Configurações do jogo
 FPS = 60
@@ -25,10 +27,6 @@ selected_option = 0
 
 # Configurações do menu config
 config_options = ["AJUSTAR VOLUME", "ALTERAR RESOLUÇÃO", "VOLTAR"]
-
-# Configurações novo jogo
-slot_options = ["Slot 1: Vazio", "Slot 2: Vazio", "Slot 3: Vazio"]
-selected_slot = 0
 
 # Config de volume da música
 music_volume = 0.1
@@ -53,6 +51,54 @@ config_background = pygame.image.load(
     'resources/images/configuration-menu-background-v1.0.png').convert()
 config_background = pygame.transform.scale(config_background, (WIDTH, HEIGHT))
 
+# Carrega as imagens de fundo para as fases
+primeiro_mundo_background = pygame.image.load(
+    'resources/images/ilha-das-notas.webp').convert()
+primeiro_mundo_background = pygame.transform.scale(
+    primeiro_mundo_background, (WIDTH, HEIGHT))
+
+segundo_mundo_background = pygame.image.load(
+    'resources/images/floresta-do-ritmo.webp').convert()
+segundo_mundo_background = pygame.transform.scale(
+    segundo_mundo_background, (WIDTH, HEIGHT))
+
+terceiro_mundo_background = pygame.image.load(
+    'resources/images/vale-das-escalas.webp').convert()
+terceiro_mundo_background_mundo_background = pygame.transform.scale(
+    terceiro_mundo_background, (WIDTH, HEIGHT))
+
+quarto_mundo_background = pygame.image.load(
+    'resources/images/caverna-dos-intervalos.webp').convert()
+quarto_mundo_background = pygame.transform.scale(
+    quarto_mundo_background, (WIDTH, HEIGHT))
+
+quinto_mundo_background = pygame.image.load(
+    'resources/images/castelo-dos-acordes.webp').convert()
+quinto_mundo_background = pygame.transform.scale(
+    quinto_mundo_background, (WIDTH, HEIGHT))
+
+sexto_mundo_background = pygame.image.load(
+    'resources/images/torre-da-composicao.webp').convert()
+sexto_mundo_background = pygame.transform.scale(
+    sexto_mundo_background, (WIDTH, HEIGHT))
+
+# Carrega os sprites
+guide_sprite_image = pygame.image.load(
+    'resources/sprites/guia.png').convert_alpha()
+guide_sprite = pygame.transform.scale(guide_sprite_image, (250, 300))
+
+note_sprites = {
+    "do": pygame.transform.scale(pygame.image.load('resources/sprites/do.png').convert_alpha(), (100, 100)),
+    "re": pygame.transform.scale(pygame.image.load('resources/sprites/re.png').convert_alpha(), (100, 100)),
+    "mi": pygame.transform.scale(pygame.image.load('resources/sprites/mi.png').convert_alpha(), (100, 100)),
+    "fa": pygame.transform.scale(pygame.image.load('resources/sprites/fa.png').convert_alpha(), (100, 100)),
+    "sol": pygame.transform.scale(pygame.image.load('resources/sprites/sol.png').convert_alpha(), (100, 100)),
+    "la": pygame.transform.scale(pygame.image.load('resources/sprites/la.png').convert_alpha(), (100, 100)),
+    "si": pygame.transform.scale(pygame.image.load('resources/sprites/si.png').convert_alpha(), (100, 100)),
+}
+
+notes_found = [False] * len(note_sprites)
+
 # Função para desenhar o menu
 
 
@@ -75,55 +121,191 @@ def draw_menu():
         screen.blit(text, text_rect)
 
 
-def draw_slot_selection():
-    # Reutiliza o fundo do menu para simplicidade
-    screen.blit(config_background, (0, 0))
-    font = pygame.font.Font('resources/fonts/barcadenobar.ttf', 35)
+def draw_note_legend():
+    legend_x = 50
+    legend_y = 100
+    padding = 10
+    note_height = 50
+    border_padding = 5  # Espaçamento adicional para a borda
+    title_padding = 30  # Espaço entre o título e a primeira nota
+    font = pygame.font.Font('resources/fonts/barcadenobar.ttf', 24)
+    # Fonte para o "v" de verificado
+    checkmark_font = pygame.font.Font('resources/fonts/barcadenobar.ttf', 30)
 
-    space_percentage = 0.01  # Define o espaço entre os slots como 1% da largura da tela
-    # Calcula o espaço entre os slots baseado na largura da tela
-    space_between_slots = WIDTH * space_percentage
+    # Desenha o título da legenda
+    title_text = font.render("Legenda de Notas", True, WHITE)
+    title_rect = title_text.get_rect()
+    title_rect.topleft = (legend_x, legend_y - title_padding)
+    pygame.draw.rect(screen, BLACK, (title_rect.left - border_padding, title_rect.top - border_padding,
+                                     title_rect.width + 2 * border_padding, title_rect.height + 2 * border_padding))
+    screen.blit(title_text, title_rect)
 
-    # Calcula a largura total necessária, considerando o espaço dinâmico entre os slots
-    total_width = sum(font.size(slot)[
-                      0] for slot in slot_options) + (len(slot_options) - 1) * space_between_slots
-    # Calcula a posição inicial x para que os slots fiquem centralizados
-    start_x = (WIDTH - total_width) / 2
+    for i, (note_name, sprite) in enumerate(note_sprites.items()):
+        # Escala e desenha o sprite da nota
+        resized_sprite = pygame.transform.scale(
+            sprite, (note_height, note_height))
+        sprite_x = legend_x
+        sprite_y = legend_y + i * (note_height + padding)
+        screen.blit(resized_sprite, (sprite_x, sprite_y))
 
-    y = 300  # Posição y para todos os slots
-    for i, slot in enumerate(slot_options):
-        text = font.render(slot, True, WHITE if i ==
-                           selected_slot else (80, 80, 80))
-        text_rect = text.get_rect()
-        # Atualiza a posição do slot baseando-se na posição inicial e no índice
-        text_rect.topleft = (start_x, y)
-        screen.blit(text, text_rect)
+        # Renderiza e desenha o texto da nota
+        note_text = font.render(note_name.capitalize(), True, BLACK)
+        text_x = legend_x + note_height + padding
+        text_y = sprite_y
+        screen.blit(note_text, (text_x, text_y))
 
-        start_x += text_rect.width + space_between_slots
+        # Verifica se a nota foi encontrada e desenha um "v" verde ao lado
+        if notes_found[i]:
+            checkmark = checkmark_font.render(
+                "✓", True, (0, 255, 0))  # Cor verde para o "v"
+            # Posiciona o "v" um pouco à direita do nome da nota
+            checkmark_x = text_x + note_text.get_width() + 10
+            checkmark_y = text_y
+            screen.blit(checkmark, (checkmark_x, checkmark_y))
 
 
-def handle_slot_selection():
-    global selected_slot
-    while True:
-        draw_slot_selection()
-        pygame.display.update()
+# Função para lidar com a primeira fase do jogo
 
+
+def start_ilha_notas():
+    global running, notes_found
+    pygame.mixer.music.fadeout(1000)
+    fade_in_ilha_notas()
+    running = True
+    dialogue_index = 0
+    dialogue_finished = False
+    note_positions = []
+    dialogue_texts = [
+        "Olá, bem-vindo à Ilha das Notas! Aqui, vamos explorar as sete notas musicais básicas.",
+        "As notas são: Dó, Ré, Mi, Fá, Sol, Lá, Si.",
+        "Cada uma tem seu som único e vibração.",
+        "Vamos começar com Dó, a base para começar escalas e lições na música ocidental.",
+        "Siga-me e tente identificar cada nota que encontrarmos pela ilha!",
+        "Pressione Enter para continuar ou ESC para voltar ao menu."
+    ]
+    while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 exit()
-            if event.type == KEYDOWN:
-                if event.key == K_ESCAPE:
-                    return  # Retorna ao menu principal
-                elif event.key == K_RIGHT or event.key == K_d:
-                    selected_slot = (selected_slot + 1) % len(slot_options)
-                elif event.key == K_LEFT or event.key == K_a:
-                    selected_slot = (selected_slot - 1) % len(slot_options)
-                elif event.key == K_RETURN:
-                    # Aqui vai a lógica de save
-                    print(
-                        f"Novo jogo iniciado no {slot_options[selected_slot]}")
-                    return
+            elif event.type == KEYDOWN:
+                if event.key == K_RETURN:
+                    if dialogue_index < len(dialogue_texts) - 1:
+                        dialogue_index += 1
+                    else:
+                        dialogue_finished = True
+                        note_positions = [(random.randint(
+                            100, WIDTH - 200), random.randint(100, HEIGHT - 200)) for _ in range(len(note_sprites))]
+                elif event.key == K_ESCAPE:
+                    running = False
+            elif event.type == MOUSEBUTTONDOWN and event.button == 1 and dialogue_finished:
+                mouse_x, mouse_y = event.pos
+                check_note_click(mouse_x, mouse_y, notes_found, note_positions)
+        screen.blit(primeiro_mundo_background, (0, 0))
+        if dialogue_finished:
+            draw_notes_and_confirmation(notes_found, note_positions)
+            draw_note_legend()
+        else:
+            draw_guide_and_dialogue(dialogue_texts[dialogue_index])
+        pygame.display.update()
+
+
+def draw_notes_and_confirmation(notes_found, positions):
+    for i, (note_name, sprite) in enumerate(note_sprites.items()):
+        x, y = positions[i]  # Certifique-se de que esta posição está definida
+        screen.blit(sprite, (x, y))
+        if notes_found[i]:
+            pygame.draw.circle(
+                screen, (0, 255, 0), (x + sprite.get_width() // 2, y + sprite.get_height() // 2), 15)
+
+
+def check_note_click(mouse_x, mouse_y, notes_found, positions):
+    note_width, note_height = 100, 100  # Largura e altura dos sprites das notas
+    for i, (x, y) in enumerate(positions):
+        note_rect = pygame.Rect(x, y, note_width, note_height)
+        if note_rect.collidepoint(mouse_x, mouse_y):
+            notes_found[i] = True  # Certifique-se de que este índice existe
+            break
+
+
+def draw_guide_and_dialogue(text):
+    # Posição do sprite do guia na tela
+    guide_x = 100
+    guide_y = HEIGHT // 2 - guide_sprite.get_height() // 2
+    screen.blit(guide_sprite, (guide_x, guide_y))
+
+    # Configurações para a caixa de diálogo
+    dialog_width = WIDTH - 200
+    dialog_height = 100
+    dialog_x = 50
+    dialog_y = HEIGHT - dialog_height - 50
+    padding = 10  # Padding para o texto dentro da caixa
+
+    # Desenha o retângulo para a caixa de diálogo
+    pygame.draw.rect(screen, (0, 0, 0, 180), (dialog_x,
+                     dialog_y, dialog_width, dialog_height))
+
+    # Configura a fonte e renderiza o texto
+    font = pygame.font.Font('resources/fonts/barcadenobar.ttf', 20)
+    text_surface = font.render(text, True, WHITE)
+    text_rect = text_surface.get_rect()
+    text_rect.topleft = (dialog_x + padding, dialog_y + padding)
+    screen.blit(text_surface, text_rect)
+
+    # Adiciona "Clique para continuar" no canto direito
+    continue_text = font.render("clique para continuar", True, WHITE)
+    continue_rect = continue_text.get_rect()
+    continue_rect.bottomright = (
+        dialog_x + dialog_width - padding - 10, dialog_y + dialog_height - padding)
+    screen.blit(continue_text, continue_rect)
+
+    # Adiciona uma setinha piscante
+    current_time = pygame.time.get_ticks()
+    if (current_time // 500) % 2:  # Piscar a cada 500 ms
+        arrow_text = font.render(">", True, WHITE)
+        arrow_rect = arrow_text.get_rect()
+        arrow_rect.left = continue_rect.right + 5
+        arrow_rect.centery = continue_rect.centery
+        screen.blit(arrow_text, arrow_rect)
+
+    # Desenha as bordas da caixa de diálogo
+    pygame.draw.rect(screen, WHITE, (dialog_x, dialog_y,
+                     dialog_width, dialog_height), 2)
+# Função para suavizar a transição para a fase
+
+
+def fade_out_screen():
+    fade = pygame.Surface((WIDTH, HEIGHT))
+    fade.fill(BLACK)
+    for alpha in range(0, 300):
+        fade.set_alpha(alpha)
+        screen.blit(fade, (0, 0))
+        pygame.display.update()
+        pygame.time.delay(5)
+
+# Função para suavizar a transição de volta ao menu
+
+
+def fade_in_screen():
+    fade = pygame.Surface((WIDTH, HEIGHT))
+    fade.fill(BLACK)
+    for alpha in range(300, 0, -1):
+        fade.set_alpha(alpha)
+        screen.blit(menu_background, (0, 0))
+        screen.blit(fade, (0, 0))
+        pygame.display.flip()
+        pygame.time.delay(5)
+
+
+def fade_in_ilha_notas():
+    fade = pygame.Surface((WIDTH, HEIGHT))
+    fade.fill(BLACK)
+    for alpha in range(300, 0, -1):
+        fade.set_alpha(alpha)
+        screen.blit(primeiro_mundo_background, (0, 0))
+        screen.blit(fade, (0, 0))
+        pygame.display.update()
+        pygame.time.delay(5)
 
 # Função para desenhar o menu de configuração
 
@@ -247,8 +429,9 @@ def adjust_volume():
         draw_volume_icon(music_volume)
         pygame.display.update()
 
-
 # Função para desenhar o ícone do volume
+
+
 def draw_volume_icon(volume):
     font = pygame.font.Font('resources/fonts/barcadenobar.ttf', 20)
     volume_text = font.render("VOLUME", True, WHITE)
@@ -336,7 +519,7 @@ def handle_events():
                 selected_option = (selected_option - 1) % len(menu_options)
             elif event.key == K_RETURN:
                 if selected_option == 0:  # Novo Jogo
-                    handle_slot_selection()
+                    start_ilha_notas()
                 elif selected_option == len(menu_options) - 1:
                     pygame.quit()
                     exit()
