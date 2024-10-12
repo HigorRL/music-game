@@ -17,6 +17,9 @@ HEIGHT = 720
 # Cores
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+BLUE = (0, 0, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
 
 # Configurações do jogo
 FPS = 60
@@ -99,6 +102,65 @@ note_sprites = {
 
 notes_found = [False] * len(note_sprites)
 
+
+class Jogador(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.image = pygame.Surface((50, 50))
+        self.image.fill(RED)
+        self.rect = self.image.get_rect()
+        self.rect.x = 60
+        self.rect.y = 550
+        self.vel_y = 0.1
+        self.jumping = False  # Estado do pulo
+        self.gravity = 0.3  # Gravidade
+        self.jump_height = 10  # Altura do pulo
+
+    def update(self, teclas):
+        if teclas[K_LEFT]:
+            self.rect.x -= 1  # Controle de velocidade
+        if teclas[K_RIGHT]:
+            self.rect.x += 1
+
+        if not self.jumping:
+            if teclas[K_UP]:
+                self.jumping = True
+                self.vel_y = -self.jump_height
+        else:
+            self.vel_y += self.gravity  # Aplica a gravidade
+            self.rect.y += self.vel_y
+
+            # Verifica se o jogador atingiu o chão
+            if self.rect.y >= 300:
+                self.rect.y = 300
+                self.jumping = False
+                self.vel_y = 0
+
+# Funções de fase
+
+
+def criar_plataformas():
+    plataformas = [
+        pygame.Rect(100, 600, 300, 20),
+        pygame.Rect(500, 450, 300, 20),
+        pygame.Rect(900, 300, 300, 20)
+    ]
+    return plataformas
+
+
+def desenhar_plataformas(plataformas):
+    for plataforma in plataformas:
+        pygame.draw.rect(screen, GREEN, plataforma)
+
+
+def verificar_colisoes(jogador, plataformas):
+    jogador.no_chao = False
+    for plataforma in plataformas:
+        if jogador.rect.colliderect(plataforma):
+            if jogador.vel_y > 0:
+                jogador.rect.bottom = plataforma.top
+                jogador.no_chao = True
+                jogador.vel_y = 0
 # Função para desenhar o menu
 
 
@@ -121,7 +183,7 @@ def draw_menu():
         screen.blit(text, text_rect)
 
 
-def draw_note_legend():
+# def draw_note_legend():
     legend_x = 50
     legend_y = 100
     padding = 10
@@ -132,49 +194,17 @@ def draw_note_legend():
     # Fonte para o "v" de verificado
     checkmark_font = pygame.font.Font('resources/fonts/barcadenobar.ttf', 30)
 
-    # Desenha o título da legenda
-    title_text = font.render("Legenda de Notas", True, WHITE)
-    title_rect = title_text.get_rect()
-    title_rect.topleft = (legend_x, legend_y - title_padding)
-    pygame.draw.rect(screen, BLACK, (title_rect.left - border_padding, title_rect.top - border_padding,
-                                     title_rect.width + 2 * border_padding, title_rect.height + 2 * border_padding))
-    screen.blit(title_text, title_rect)
-
-    for i, (note_name, sprite) in enumerate(note_sprites.items()):
-        # Escala e desenha o sprite da nota
-        resized_sprite = pygame.transform.scale(
-            sprite, (note_height, note_height))
-        sprite_x = legend_x
-        sprite_y = legend_y + i * (note_height + padding)
-        screen.blit(resized_sprite, (sprite_x, sprite_y))
-
-        # Renderiza e desenha o texto da nota
-        note_text = font.render(note_name.capitalize(), True, BLACK)
-        text_x = legend_x + note_height + padding
-        text_y = sprite_y
-        screen.blit(note_text, (text_x, text_y))
-
-        # Verifica se a nota foi encontrada e desenha um "v" verde ao lado
-        if notes_found[i]:
-            checkmark = checkmark_font.render(
-                "✓", True, (0, 255, 0))  # Cor verde para o "v"
-            # Posiciona o "v" um pouco à direita do nome da nota
-            checkmark_x = text_x + note_text.get_width() + 10
-            checkmark_y = text_y
-            screen.blit(checkmark, (checkmark_x, checkmark_y))
-
-
 # Função para lidar com a primeira fase do jogo
 
 
-def start_ilha_notas():
-    global running, notes_found
+def start_ilha_notas(jogador, plataformas):
+    global running
     pygame.mixer.music.fadeout(1000)
     fade_in_ilha_notas()
     running = True
     dialogue_index = 0
     dialogue_finished = False
-    note_positions = []
+
     dialogue_texts = [
         "Olá, bem-vindo à Ilha das Notas! Aqui, vamos explorar as sete notas musicais básicas.",
         "As notas são: Dó, Ré, Mi, Fá, Sol, Lá, Si.",
@@ -183,6 +213,7 @@ def start_ilha_notas():
         "Siga-me e tente identificar cada nota que encontrarmos pela ilha!",
         "Pressione Enter para continuar ou ESC para voltar ao menu."
     ]
+
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -194,19 +225,25 @@ def start_ilha_notas():
                         dialogue_index += 1
                     else:
                         dialogue_finished = True
-                        note_positions = [(random.randint(
-                            100, WIDTH - 200), random.randint(100, HEIGHT - 200)) for _ in range(len(note_sprites))]
                 elif event.key == K_ESCAPE:
                     running = False
             elif event.type == MOUSEBUTTONDOWN and event.button == 1 and dialogue_finished:
                 mouse_x, mouse_y = event.pos
-                check_note_click(mouse_x, mouse_y, notes_found, note_positions)
-        screen.blit(primeiro_mundo_background, (0, 0))
-        if dialogue_finished:
-            draw_notes_and_confirmation(notes_found, note_positions)
-            draw_note_legend()
+
+        screen.fill((0, 0, 0))
+
+        if not dialogue_finished:
+            screen.blit(primeiro_mundo_background, (0, 0))
+            draw_guide_and_dialogue(
+                dialogue_texts[dialogue_index])
         else:
-            draw_guide_and_dialogue(dialogue_texts[dialogue_index])
+            teclas = pygame.key.get_pressed()
+            jogador.update(teclas)
+            verificar_colisoes(jogador, plataformas)
+
+            desenhar_plataformas(plataformas)
+            screen.blit(jogador.image, jogador.rect)
+
         pygame.display.update()
 
 
@@ -506,7 +543,7 @@ def handle_about_screen():
 # Função para lidar com os eventos
 
 
-def handle_events():
+def handle_events(jogador, plataformas):
     global selected_option
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -519,7 +556,7 @@ def handle_events():
                 selected_option = (selected_option - 1) % len(menu_options)
             elif event.key == K_RETURN:
                 if selected_option == 0:  # Novo Jogo
-                    start_ilha_notas()
+                    start_ilha_notas(jogador, plataformas)
                 elif selected_option == len(menu_options) - 1:
                     pygame.quit()
                     exit()
@@ -532,15 +569,38 @@ def handle_events():
 
 
 def main():
+    jogador = Jogador()
+    plataformas = criar_plataformas()
     clock = pygame.time.Clock()
     run = True
+
     while run:
         clock.tick(FPS)
-        handle_events()
-        draw_menu()
+
+        # Captura de eventos
+        handle_events(jogador, plataformas)
+
+        # Verifica se o jogo está ativo
+        if jogador.jumping or jogador.rect.y < 300:  # Verifica se o jogador está pulando ou acima do chão
+            # Limpa a tela
+            screen.fill((primeiro_mundo_background))
+            # Atualiza o jogador e verifica colisões
+            teclas = pygame.key.get_pressed()
+            jogador.update(teclas)
+            verificar_colisoes(jogador, plataformas)
+
+            # Desenha plataformas e jogador
+            desenhar_plataformas(plataformas)
+            screen.blit(jogador.image, jogador.rect)
+
+        else:
+            # Desenha o menu quando o jogo não está ativo
+            draw_menu()
+
         pygame.display.update()
 
 
 # Inicia o jogo
 if __name__ == "__main__":
+    pygame.init()
     main()
